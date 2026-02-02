@@ -24,7 +24,7 @@ export async function handler(event: any) {
         }
 
         // Use direct REST API to bypass all SDK versioning issues
-        const model = "gemini-1.5-flash";
+        const model = "gemini-2.0-flash-exp";
         const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
 
         if (type === "extract_docs") {
