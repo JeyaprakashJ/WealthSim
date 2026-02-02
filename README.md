@@ -43,6 +43,7 @@ Powered by **Google Gemini**, describe life events in natural language (e.g., *"
 
 ## 🚀 Getting Started
 
+### 🔜Webapp coming soon 
 ### Prerequisites
 You will need a **Google Gemini API Key**. You can get one for free at [aistudio.google.com](https://aistudio.google.com/).
 
