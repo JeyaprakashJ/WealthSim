@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
 
 export async function handler(event: any) {
     console.log("Function invoked:", event.httpMethod, event.path);
@@ -23,28 +23,48 @@ export async function handler(event: any) {
             };
         }
 
-        // Use standard SDK with default v1 API (stable, widely supported)
-        const ai = new GoogleGenAI({ apiKey });
+        // Use direct REST API to bypass all SDK versioning issues
+        const model = "gemini-1.5-flash";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
 
         if (type === "extract_docs") {
             console.log("Processing extract_docs");
             const { base64Data, mimeType } = payload;
 
-            // Simple approach: Use models.generateContent directly
-            const response = await (ai as any).models.generateContent({
-                model: "gemini-1.5-flash",
+            const requestBody = {
                 contents: [{
                     parts: [
-                        { inlineData: { data: base64Data, mimeType } },
-                        { text: "Extract the following fields from this document and return ONLY valid JSON with no markdown formatting:\n- baseSalary (annual salary as a number)\n- rsu (annual RSU value as a number)\n- initialAssets (total initial assets as a number)\n- bonusPercent (bonus percentage as a decimal, e.g., 0.1 for 10%)\n\nReturn format: {\"baseSalary\": 100000, \"rsu\": 50000, \"initialAssets\": 0, \"bonusPercent\": 0.1}" }
+                        {
+                            inline_data: {
+                                mime_type: mimeType,
+                                data: base64Data
+                            }
+                        },
+                        {
+                            text: "Extract the following fields from this document and return ONLY valid JSON with no markdown formatting:\n- baseSalary (annual salary as a number)\n- rsu (annual RSU value as a number)\n- initialAssets (total initial assets as a number)\n- bonusPercent (bonus percentage as a decimal, e.g., 0.1 for 10%)\n\nReturn format: {\"baseSalary\": 100000, \"rsu\": 50000, \"initialAssets\": 0, \"bonusPercent\": 0.1}"
+                        }
                     ]
                 }]
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
             });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(JSON.stringify(error));
+            }
+
+            const result = await response.json();
+            const text = result.candidates[0].content.parts[0].text;
 
             return {
                 statusCode: 200,
                 headers: { "Content-Type": "application/json" },
-                body: response.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+                body: text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
             };
         }
 
@@ -52,8 +72,7 @@ export async function handler(event: any) {
             console.log("Processing life_event:", payload.eventInput);
             const { eventInput, currentSimYear } = payload;
 
-            const response = await (ai as any).models.generateContent({
-                model: "gemini-1.5-flash",
+            const requestBody = {
                 contents: [{
                     parts: [{
                         text: `You are a financial event parser. Based on this life event description: "${eventInput}", extract events as a JSON array.
@@ -73,12 +92,26 @@ Return ONLY a valid JSON array with no markdown formatting. Example:
 [{"year": 2027, "type": "expense", "amount": -50000, "description": "New Car", "icon": "directions_car"}]`
                     }]
                 }]
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
             });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(JSON.stringify(error));
+            }
+
+            const result = await response.json();
+            const text = result.candidates[0].content.parts[0].text;
 
             return {
                 statusCode: 200,
                 headers: { "Content-Type": "application/json" },
-                body: response.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+                body: text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
             };
         }
 
