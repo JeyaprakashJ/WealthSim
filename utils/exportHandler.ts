@@ -27,11 +27,11 @@ export const exportData = async (
       row.rsu.toFixed(2),
       row.wealthModerate.toFixed(2)
     ];
-    
+
     if (config.lifeEvents.length > 0) {
       line.splice(2, 0, row.event ? `${row.event.description} (${row.event.amount})` : '-');
     }
-    
+
     return line.join(',');
   });
 
@@ -40,7 +40,7 @@ export const exportData = async (
 
   // 2. Create JSON Config Content
   const metadata = {
-    app: 'WealthFlow Pro',
+    app: 'WealthSim',
     version: '1.0',
     exportDate: new Date().toISOString(),
     config: config,
@@ -51,11 +51,11 @@ export const exportData = async (
   // 3. Generate and Save ZIP
   const blob = await zip.generateAsync({ type: "blob" });
   const dateStr = new Date().toISOString().split('T')[0];
-  
+
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `WealthFlow_Export_${dateStr}.zip`;
+  a.download = `WealthSim_Export_${dateStr}.zip`;
   a.click();
   window.URL.revokeObjectURL(url);
 };

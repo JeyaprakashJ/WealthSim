@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { CURRENCIES, DEFAULT_CONFIG, THEMES } from './constants';
-import { SimulationConfig, CurrencyConfig, CurrencyCode, YearOverride, ThemeId, Theme, LifeEvent } from './types';
+import { SimulationConfig, CurrencyConfig, CurrencyCode, YearOverride, ThemeId, Theme, LifeEvent, YearData } from './types';
 import { runSimulation } from './utils/simulation';
 import { formatCurrency } from './utils/formatters';
 import Sidebar from './components/Sidebar';
@@ -22,67 +22,67 @@ const StatCard = ({ title, value, sub, icon, theme, currency, inflation, duratio
 
   // Calculate Real Value (Inflation Adjusted)
   const realValue = value / Math.pow(1 + (inflation / 100), duration);
-  
+
   // Calculate Real Return (Approximation via subtraction as requested)
   const realReturn = cagr - inflation;
 
   const cardContent = (displayValue: number, displaySub: string, isBack: boolean) => (
-    <div 
-        className={`absolute inset-0 flex items-center gap-4 px-5 py-3 rounded-[20px] ${theme.tokens.surfaceContainer} border ${theme.tokens.outlineVariant} shadow-sm hover:shadow-md`}
-        style={{ 
-            backfaceVisibility: 'hidden', 
-            WebkitBackfaceVisibility: 'hidden',
-            transform: isBack ? 'rotateY(180deg)' : 'rotateY(0deg)'
-        }}
+    <div
+      className={`absolute inset-0 flex items-center gap-4 px-5 py-3 rounded-[20px] ${theme.tokens.surfaceContainer} border ${theme.tokens.outlineVariant} shadow-sm hover:shadow-md`}
+      style={{
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
+        transform: isBack ? 'rotateY(180deg)' : 'rotateY(0deg)'
+      }}
     >
-        <div className={`flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-2xl ${theme.tokens.primaryContainer} ${theme.tokens.onPrimaryContainer} shadow-inner`}>
-            <MaterialIcon name={icon} className="text-[22px]" />
+      <div className={`flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-2xl ${theme.tokens.primaryContainer} ${theme.tokens.onPrimaryContainer} shadow-inner`}>
+        <MaterialIcon name={icon} className="text-[22px]" />
+      </div>
+
+      <div className="flex flex-1 items-center justify-between gap-4 min-w-0">
+        <div className="flex flex-col min-w-0">
+          <span className={`text-[10px] font-bold ${theme.tokens.onSurfaceVariant} mb-0.5 truncate`}>
+            {title}
+          </span>
+          <span className={`text-xl font-bold tracking-tight ${theme.tokens.onSurface} truncate`}>
+            {formatCurrency(displayValue, currency, true)}
+          </span>
         </div>
 
-        <div className="flex flex-1 items-center justify-between gap-4 min-w-0">
-            <div className="flex flex-col min-w-0">
-                <span className={`text-[10px] font-bold ${theme.tokens.onSurfaceVariant} mb-0.5 truncate`}>
-                    {title}
-                </span>
-                <span className={`text-xl font-bold tracking-tight ${theme.tokens.onSurface} truncate`}>
-                    {formatCurrency(displayValue, currency, true)}
-                </span>
-            </div>
-            
-            <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${theme.tokens.secondaryContainer} ${theme.isDark ? 'text-[#E8DEF8]' : 'text-[#1D192B]'} ring-1 ring-inset ${theme.tokens.outlineVariant}`}>
-                    {displaySub}
-                </span>
-                {isBack && (
-                    <span className={`text-[8px] font-medium ${theme.tokens.onSurfaceVariant} opacity-70`}>
-                        CAGR - Inflation
-                    </span>
-                )}
-            </div>
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${theme.tokens.secondaryContainer} ${theme.isDark ? 'text-[#E8DEF8]' : 'text-[#1D192B]'} ring-1 ring-inset ${theme.tokens.outlineVariant}`}>
+            {displaySub}
+          </span>
+          {isBack && (
+            <span className={`text-[8px] font-medium ${theme.tokens.onSurfaceVariant} opacity-70`}>
+              CAGR - Inflation
+            </span>
+          )}
         </div>
+      </div>
     </div>
   );
 
   return (
-    <div 
-        className="group relative h-[88px] cursor-pointer"
-        style={{ perspective: '1000px' }}
-        onClick={() => setIsFlipped(!isFlipped)}
+    <div
+      className="group relative h-[88px] cursor-pointer"
+      style={{ perspective: '1000px' }}
+      onClick={() => setIsFlipped(!isFlipped)}
     >
-        <div 
-            className={`w-full h-full transition-all duration-500 relative`}
-            style={{ 
-                transformStyle: 'preserve-3d',
-                transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'
-            }}
-        >
-            {/* FRONT FACE */}
-            {cardContent(value, sub, false)}
+      <div
+        className={`w-full h-full transition-all duration-500 relative`}
+        style={{
+          transformStyle: 'preserve-3d',
+          transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'
+        }}
+      >
+        {/* FRONT FACE */}
+        {cardContent(value, sub, false)}
 
-            {/* BACK FACE */}
-            {cardContent(realValue, `${Number(realReturn.toFixed(2))}% Real`, true)}
+        {/* BACK FACE */}
+        {cardContent(realValue, `${Number(realReturn.toFixed(2))}% Real`, true)}
 
-        </div>
+      </div>
     </div>
   );
 };
@@ -108,7 +108,7 @@ const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [overrides, setOverrides] = useState<Record<number, YearOverride>>({});
   const [themeId, setThemeId] = useState<ThemeId>('light');
-  
+
   const [chatOpen, setChatOpen] = useState(false);
   const [mobileConfigOpen, setMobileConfigOpen] = useState(false);
   const [eventInput, setEventInput] = useState('');
@@ -117,7 +117,7 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<YearData[]>([]);
 
   const theme = useMemo(() => THEMES.find(t => t.id === themeId) || THEMES[0], [themeId]);
-  
+
   const simulationResults = useMemo(() => {
     const liveResults = runSimulation(config, overrides, currency.code);
     if (history.length === 0) return liveResults;
@@ -135,17 +135,17 @@ const App: React.FC = () => {
     // but we should ensure it reflects the end of the combined array.
     // Since 'futureYears' comes from 'liveResults', the final wealth *is* the end of liveResults.
     // Unless futureYears is empty (simulation ended), in which case we take history end.
-    
+
     const finalYear = combinedYears[combinedYears.length - 1];
     const finalWealth = {
-        conservative: finalYear.wealthConservative,
-        moderate: finalYear.wealthModerate,
-        aggressive: finalYear.wealthAggressive
+      conservative: finalYear.wealthConservative,
+      moderate: finalYear.wealthModerate,
+      aggressive: finalYear.wealthAggressive
     };
 
     return {
-        years: combinedYears,
-        finalWealth
+      years: combinedYears,
+      finalWealth
     };
   }, [config, overrides, currency.code, history]);
 
@@ -191,16 +191,16 @@ const App: React.FC = () => {
         row.rsu.toFixed(2),
         row.wealthModerate.toFixed(2)
       ];
-      
+
       if (hasEvents) {
         line.splice(2, 0, row.event ? `${row.event.description} (${row.event.amount})` : '-');
       }
-      
+
       return line.join('\t');
     });
 
     const text = [headers.join('\t'), ...rows].join('\n');
-    
+
     try {
       await navigator.clipboard.writeText(text);
       setIsCopied(true);
@@ -219,13 +219,13 @@ const App: React.FC = () => {
       if (file.type === 'application/zip' || file.name.endsWith('.zip')) {
         const zip = new JSZip();
         const content = await zip.loadAsync(file);
-        
+
         if (content.files['config.json']) {
           const configText = await content.files['config.json'].async('text');
           importedConfig = JSON.parse(configText);
         }
         if (content.files['simulation_data.csv']) {
-            importedCSV = await content.files['simulation_data.csv'].async('text');
+          importedCSV = await content.files['simulation_data.csv'].async('text');
         }
       }
       // 2. Handle JSON files
@@ -240,111 +240,111 @@ const App: React.FC = () => {
 
       // Process Imported Data
       if (importedConfig || importedCSV) {
-          const currentSystemYear = new Date().getFullYear();
-          let newHistory: YearData[] = [];
-          let lastHistoryRow: any = null;
+        const currentSystemYear = new Date().getFullYear();
+        let newHistory: YearData[] = [];
+        let lastHistoryRow: any = null;
 
-          // Parse CSV for History
-          if (importedCSV) {
-              const lines = importedCSV.split('\n');
-              const headers = lines[0].split(',');
-              // Simple mapping based on known headers
-              // Headers: Year, Age, Base Salary, Bonus, Disposable Income, Investable Cash, RSU Grant, Total Wealth, [Life Event]
-              
-              for (let i = 1; i < lines.length; i++) {
-                  if (!lines[i].trim()) continue;
-                  const cols = lines[i].split(',');
-                  const year = parseInt(cols[0]);
-                  
-                  if (year < currentSystemYear) {
-                      // This is a historical year
-                      const age = parseInt(cols[1]);
-                      const base = parseFloat(cols[2]);
-                      const bonus = parseFloat(cols[3]);
-                      const annualNetPay = parseFloat(cols[4]); // Disposable Income
-                      // Investable Cash is cols[5]
-                      const rsu = parseFloat(cols[6]);
-                      const wealth = parseFloat(cols[7]);
-                      
-                      // Reconstruct YearData
-                      // Note: We might miss some derived fields like 'taxRate' or 'grossIncome' if not in CSV.
-                      // We'll fill essential ones for display.
-                      newHistory.push({
-                          year,
-                          age,
-                          base,
-                          bonus,
-                          annualNetPay,
-                          rsu,
-                          wealthModerate: wealth,
-                          wealthConservative: wealth, // Assume converged history
-                          wealthAggressive: wealth,   // Assume converged history
-                          taxRate: 0, // Unknown from CSV
-                          annualSpent: 0, // Unknown
-                          grossIncome: 0, // Unknown
-                          postTaxIncome: annualNetPay,
-                          investable: parseFloat(cols[5]),
-                          cashWealthMod: 0, // Unknown breakdown
-                          stockWealthMod: 0, // Unknown breakdown
-                          event: undefined // Could parse if needed, but complex
-                      });
-                  }
-              }
-              
-              if (newHistory.length > 0) {
-                  lastHistoryRow = newHistory[newHistory.length - 1];
-              }
+        // Parse CSV for History
+        if (importedCSV) {
+          const lines = importedCSV.split('\n');
+          const headers = lines[0].split(',');
+          // Simple mapping based on known headers
+          // Headers: Year, Age, Base Salary, Bonus, Disposable Income, Investable Cash, RSU Grant, Total Wealth, [Life Event]
+
+          for (let i = 1; i < lines.length; i++) {
+            if (!lines[i].trim()) continue;
+            const cols = lines[i].split(',');
+            const year = parseInt(cols[0]);
+
+            if (year < currentSystemYear) {
+              // This is a historical year
+              const age = parseInt(cols[1]);
+              const base = parseFloat(cols[2]);
+              const bonus = parseFloat(cols[3]);
+              const annualNetPay = parseFloat(cols[4]); // Disposable Income
+              // Investable Cash is cols[5]
+              const rsu = parseFloat(cols[6]);
+              const wealth = parseFloat(cols[7]);
+
+              // Reconstruct YearData
+              // Note: We might miss some derived fields like 'taxRate' or 'grossIncome' if not in CSV.
+              // We'll fill essential ones for display.
+              newHistory.push({
+                year,
+                age,
+                base,
+                bonus,
+                annualNetPay,
+                rsu,
+                wealthModerate: wealth,
+                wealthConservative: wealth, // Assume converged history
+                wealthAggressive: wealth,   // Assume converged history
+                taxRate: 0, // Unknown from CSV
+                annualSpent: 0, // Unknown
+                grossIncome: 0, // Unknown
+                postTaxIncome: annualNetPay,
+                investable: parseFloat(cols[5]),
+                cashWealthMod: 0, // Unknown breakdown
+                stockWealthMod: 0, // Unknown breakdown
+                event: undefined // Could parse if needed, but complex
+              });
+            }
           }
 
-          // Update Config
-          if (importedConfig) {
-              const baseConfig = importedConfig.config || importedConfig;
-              
-              if (lastHistoryRow) {
-                  // Rolling Simulation Logic
-                  const newStartYear = lastHistoryRow.year + 1;
-                  const newInitialAge = lastHistoryRow.age + 1;
-                  const originalEndYear = baseConfig.startYear + baseConfig.duration;
-                  const newDuration = Math.max(1, originalEndYear - newStartYear);
-
-                  setConfig(prev => ({
-                      ...prev,
-                      ...baseConfig,
-                      startYear: newStartYear,
-                      initialAge: newInitialAge,
-                      initialAssets: lastHistoryRow.wealthModerate,
-                      baseSalary: lastHistoryRow.base,
-                      rsu: lastHistoryRow.rsu, 
-                      duration: newDuration
-                  }));
-                  setHistory(newHistory);
-              } else {
-                  // Standard Import (No history or all future)
-                  setConfig(prev => ({ ...prev, ...baseConfig }));
-                  setHistory([]);
-              }
-
-              if (importedConfig.currency) {
-                  setCurrency(CURRENCIES[importedConfig.currency as CurrencyCode] || CURRENCIES.INR);
-              }
-          } else if (lastHistoryRow) {
-              // CSV Only Import (No Config JSON)
-              // We infer state from the last historical row
-              const newStartYear = lastHistoryRow.year + 1;
-              const newInitialAge = lastHistoryRow.age + 1;
-              // We keep existing duration/config but shift the start
-              
-              setConfig(prev => ({
-                  ...prev,
-                  startYear: newStartYear,
-                  initialAge: newInitialAge,
-                  initialAssets: lastHistoryRow.wealthModerate,
-                  baseSalary: lastHistoryRow.base,
-                  rsu: lastHistoryRow.rsu
-              }));
-              setHistory(newHistory);
+          if (newHistory.length > 0) {
+            lastHistoryRow = newHistory[newHistory.length - 1];
           }
-          return;
+        }
+
+        // Update Config
+        if (importedConfig) {
+          const baseConfig = importedConfig.config || importedConfig;
+
+          if (lastHistoryRow) {
+            // Rolling Simulation Logic
+            const newStartYear = lastHistoryRow.year + 1;
+            const newInitialAge = lastHistoryRow.age + 1;
+            const originalEndYear = baseConfig.startYear + baseConfig.duration;
+            const newDuration = Math.max(1, originalEndYear - newStartYear);
+
+            setConfig(prev => ({
+              ...prev,
+              ...baseConfig,
+              startYear: newStartYear,
+              initialAge: newInitialAge,
+              initialAssets: lastHistoryRow.wealthModerate,
+              baseSalary: lastHistoryRow.base,
+              rsu: lastHistoryRow.rsu,
+              duration: newDuration
+            }));
+            setHistory(newHistory);
+          } else {
+            // Standard Import (No history or all future)
+            setConfig(prev => ({ ...prev, ...baseConfig }));
+            setHistory([]);
+          }
+
+          if (importedConfig.currency) {
+            setCurrency(CURRENCIES[importedConfig.currency as CurrencyCode] || CURRENCIES.INR);
+          }
+        } else if (lastHistoryRow) {
+          // CSV Only Import (No Config JSON)
+          // We infer state from the last historical row
+          const newStartYear = lastHistoryRow.year + 1;
+          const newInitialAge = lastHistoryRow.age + 1;
+          // We keep existing duration/config but shift the start
+
+          setConfig(prev => ({
+            ...prev,
+            startYear: newStartYear,
+            initialAge: newInitialAge,
+            initialAssets: lastHistoryRow.wealthModerate,
+            baseSalary: lastHistoryRow.base,
+            rsu: lastHistoryRow.rsu
+          }));
+          setHistory(newHistory);
+        }
+        return;
       }
 
       // 3. Fallback to AI extraction for Images/PDFs
@@ -358,11 +358,11 @@ const App: React.FC = () => {
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: [{ 
-            parts: [
-                { inlineData: { data: base64Data, mimeType: file.type } }, 
-                { text: `Extract annual 'baseSalary', 'rsu', 'initialAssets', 'bonusPercent'. JSON only.` }
-            ] 
+        contents: [{
+          parts: [
+            { inlineData: { data: base64Data, mimeType: file.type } },
+            { text: `Extract annual 'baseSalary', 'rsu', 'initialAssets', 'bonusPercent'. JSON only.` }
+          ]
         }],
         config: {
           responseMimeType: "application/json",
@@ -394,7 +394,7 @@ const App: React.FC = () => {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const currentSimYear = config.startYear;
-      
+
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Life event prompt: "${eventInput}". Current simulation start year is ${currentSimYear}. 
@@ -438,7 +438,7 @@ const App: React.FC = () => {
           ]
         }));
         setEventInput('');
-        setChatOpen(false); 
+        setChatOpen(false);
       }
     } catch (e) {
       console.error("AI Error:", e);
@@ -462,14 +462,14 @@ const App: React.FC = () => {
       />
 
       <main className={`flex-1 h-full overflow-y-auto scrollbar-thin ${theme.tokens.surfaceContainerLow} relative`}>
-        
+
         <div className="flex justify-between items-center h-20 px-4 flex-shrink-0">
           <div>
-            <h2 className={`text-2xl font-bold tracking-tight ${theme.tokens.onSurface}`}>WealthFlow</h2>
+            <h2 className={`text-2xl font-bold tracking-tight ${theme.tokens.onSurface}`}>WealthSim</h2>
             <p className={`text-xs mt-0.5 ${theme.tokens.onSurfaceVariant}`}>From today's investments to tomorrow's freedom: plan for early retirement and family growth.</p>
           </div>
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => exportData(config, simulationResults, currency)}
             className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold transition-all ${theme.tokens.primary} ${theme.tokens.onPrimary} shadow-lg active:scale-95`}
           >
@@ -483,153 +483,153 @@ const App: React.FC = () => {
             <StatCard title="Conservative" value={simulationResults.finalWealth.conservative} sub={`${config.returnConservative}% CAGR`} icon="shield" theme={theme} currency={currency} inflation={config.inflation} duration={config.duration} cagr={config.returnConservative} />
             <StatCard title="Moderate" value={simulationResults.finalWealth.moderate} sub={`${config.returnModerate}% CAGR`} icon="bolt" theme={theme} currency={currency} inflation={config.inflation} duration={config.duration} cagr={config.returnModerate} />
             <StatCard title="Aggressive" value={simulationResults.finalWealth.aggressive} sub={`${config.returnAggressive}% CAGR`} icon="trending_up" theme={theme} currency={currency} inflation={config.inflation} duration={config.duration} cagr={config.returnAggressive} />
-        </div>
+          </div>
 
-        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+          <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
             {/* Left Column: Stacked Charts */}
             <div className="lg:col-span-5 flex flex-col gap-4">
-                <BentoCard title="Wealth Trajectory" theme={theme} className="h-[260px] sm:h-[280px] lg:h-[320px]">
-                  <div id="wealth-trajectory-chart" className="h-full w-full min-h-0">
-                    <WealthChart data={simulationResults.years} currency={currency} theme={theme} mode="growth" rsuValue={config.rsu} />
-                  </div>
-                </BentoCard>
+              <BentoCard title="Wealth Trajectory" theme={theme} className="h-[260px] sm:h-[280px] lg:h-[320px]">
+                <div id="wealth-trajectory-chart" className="h-full w-full min-h-0">
+                  <WealthChart data={simulationResults.years} currency={currency} theme={theme} mode="growth" rsuValue={config.rsu} />
+                </div>
+              </BentoCard>
 
-                <BentoCard title="Income Structure" theme={theme} className="h-[260px] sm:h-[280px] lg:h-[320px]">
-                  <div id="income-structure-chart" className="h-full w-full min-h-0">
-                    <WealthChart data={simulationResults.years} currency={currency} theme={theme} mode="composition" rsuValue={config.rsu} />
-                  </div>
-                </BentoCard>
+              <BentoCard title="Income Structure" theme={theme} className="h-[260px] sm:h-[280px] lg:h-[320px]">
+                <div id="income-structure-chart" className="h-full w-full min-h-0">
+                  <WealthChart data={simulationResults.years} currency={currency} theme={theme} mode="composition" rsuValue={config.rsu} />
+                </div>
+              </BentoCard>
             </div>
 
             {/* Right Column: Full Height Table */}
             <div className="lg:col-span-7 h-full">
-                <BentoCard 
-                  title="Yearly Breakdown" 
-                  theme={theme} 
-                  className="h-[656px]" // Matches 320 + 320 + gap(16)
-                  action={
-                    <div className="flex items-center gap-2">
-                        <button 
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); handleCopyTable(); }} 
-                        className={`text-[10px] font-bold px-3 py-1.5 rounded-full border ${theme.tokens.outline} ${theme.tokens.onSurfaceVariant} hover:bg-black/5 transition-all active:scale-95 flex items-center gap-1.5`}
-                        >
-                        <MaterialIcon name={isCopied ? "check" : "content_copy"} className="text-[14px]" />
-                        {isCopied ? "Copied" : "Copy"}
-                        </button>
-                        <button 
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); handleReset(); }} 
-                        className={`text-[10px] font-bold px-4 py-1.5 rounded-full border ${theme.tokens.outline} ${theme.tokens.onSurfaceVariant} hover:bg-black/5 transition-all active:scale-95`}
-                        >
-                        Reset Overrides
-                        </button>
-                    </div>
-                  }
-                >
-                  <div id="yearly-breakdown-table" className="h-full">
-                    <WealthTable 
-                      data={simulationResults.years}
-                      config={config}
-                      currency={currency} 
-                      theme={theme} 
-                      onOverride={handleOverride} 
-                      onReset={handleReset} 
-                      compact={true}
-                    />
+              <BentoCard
+                title="Yearly Breakdown"
+                theme={theme}
+                className="h-[656px]" // Matches 320 + 320 + gap(16)
+                action={
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); handleCopyTable(); }}
+                      className={`text-[10px] font-bold px-3 py-1.5 rounded-full border ${theme.tokens.outline} ${theme.tokens.onSurfaceVariant} hover:bg-black/5 transition-all active:scale-95 flex items-center gap-1.5`}
+                    >
+                      <MaterialIcon name={isCopied ? "check" : "content_copy"} className="text-[14px]" />
+                      {isCopied ? "Copied" : "Copy"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); handleReset(); }}
+                      className={`text-[10px] font-bold px-4 py-1.5 rounded-full border ${theme.tokens.outline} ${theme.tokens.onSurfaceVariant} hover:bg-black/5 transition-all active:scale-95`}
+                    >
+                      Reset Overrides
+                    </button>
                   </div>
-                </BentoCard>
+                }
+              >
+                <div id="yearly-breakdown-table" className="h-full">
+                  <WealthTable
+                    data={simulationResults.years}
+                    config={config}
+                    currency={currency}
+                    theme={theme}
+                    onOverride={handleOverride}
+                    onReset={handleReset}
+                    compact={true}
+                  />
+                </div>
+              </BentoCard>
             </div>
-        </div>
+          </div>
 
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
+          <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
             {/* Mobile Config FAB */}
-            <button 
-                type="button"
-                onClick={() => setMobileConfigOpen(true)}
-                className={`md:hidden w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${theme.tokens.secondaryContainer} ${theme.tokens.onSecondaryContainer}`}
+            <button
+              type="button"
+              onClick={() => setMobileConfigOpen(true)}
+              className={`md:hidden w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${theme.tokens.secondaryContainer} ${theme.tokens.onSecondaryContainer}`}
             >
-                <MaterialIcon name="tune" className="text-2xl" />
+              <MaterialIcon name="tune" className="text-2xl" />
             </button>
 
             {/* AI Chat FAB */}
             {chatOpen && (
-                <div className={`w-80 rounded-3xl overflow-hidden shadow-2xl border ${theme.tokens.outlineVariant} ${theme.tokens.surfaceContainerHigh} animate-in slide-in-from-bottom-4 duration-300`}>
-                    <div className="p-4 border-b border-white/10 flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                             <div className={`p-1.5 rounded-lg ${theme.tokens.primaryContainer}`}>
-                                <MaterialIcon name="bolt" className={`text-sm ${theme.tokens.onPrimaryContainer}`} />
-                             </div>
-                             <span className="text-xs font-bold">Magic Timeline</span>
-                        </div>
-                        <button type="button" onClick={() => setChatOpen(false)} className="opacity-60 hover:opacity-100">
-                            <MaterialIcon name="close" className="text-sm" />
-                        </button>
+              <div className={`w-80 rounded-3xl overflow-hidden shadow-2xl border ${theme.tokens.outlineVariant} ${theme.tokens.surfaceContainerHigh} animate-in slide-in-from-bottom-4 duration-300`}>
+                <div className="p-4 border-b border-white/10 flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1.5 rounded-lg ${theme.tokens.primaryContainer}`}>
+                      <MaterialIcon name="bolt" className={`text-sm ${theme.tokens.onPrimaryContainer}`} />
                     </div>
-                    <div className="p-4 space-y-4">
-                        <p className="text-[10px] opacity-60 leading-relaxed">
-                            Describe changes like "25% hike in 2027" or "Buying 50L car in 2030".
-                        </p>
-                        <textarea
-                            value={eventInput}
-                            onChange={(e) => setEventInput(e.target.value)}
-                            placeholder="e.g. 25% salary hike in 2027..."
-                            className={`w-full h-20 p-3 text-[11px] font-medium rounded-2xl resize-none outline-none border-2 transition-all ${theme.tokens.surfaceContainerLow} ${theme.tokens.onSurface} ${theme.tokens.outlineVariant} focus:border-primary`}
-                        />
-                        <button 
-                            type="button"
-                            onClick={(e) => { e.preventDefault(); handleAddLifeEvent(); }}
-                            disabled={!eventInput.trim() || isProcessing}
-                            className={`w-full py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-2 ${isProcessing ? 'opacity-50' : ''} ${theme.tokens.primary} ${theme.tokens.onPrimary}`}
-                        >
-                            {isProcessing ? (
-                                <MaterialIcon name="sync" className="text-xs animate-spin" />
-                            ) : (
-                                <>
-                                    <MaterialIcon name="add_task" className="text-xs" />
-                                    <span>Apply Event</span>
-                                </>
-                            )}
-                        </button>
-                    </div>
+                    <span className="text-xs font-bold">Magic Timeline</span>
+                  </div>
+                  <button type="button" onClick={() => setChatOpen(false)} className="opacity-60 hover:opacity-100">
+                    <MaterialIcon name="close" className="text-sm" />
+                  </button>
                 </div>
+                <div className="p-4 space-y-4">
+                  <p className="text-[10px] opacity-60 leading-relaxed">
+                    Describe changes like "25% hike in 2027" or "Buying 50L car in 2030".
+                  </p>
+                  <textarea
+                    value={eventInput}
+                    onChange={(e) => setEventInput(e.target.value)}
+                    placeholder="e.g. 25% salary hike in 2027..."
+                    className={`w-full h-20 p-3 text-[11px] font-medium rounded-2xl resize-none outline-none border-2 transition-all ${theme.tokens.surfaceContainerLow} ${theme.tokens.onSurface} ${theme.tokens.outlineVariant} focus:border-primary`}
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); handleAddLifeEvent(); }}
+                    disabled={!eventInput.trim() || isProcessing}
+                    className={`w-full py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-2 ${isProcessing ? 'opacity-50' : ''} ${theme.tokens.primary} ${theme.tokens.onPrimary}`}
+                  >
+                    {isProcessing ? (
+                      <MaterialIcon name="sync" className="text-xs animate-spin" />
+                    ) : (
+                      <>
+                        <MaterialIcon name="add_task" className="text-xs" />
+                        <span>Apply Event</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             )}
-            <button 
-                type="button"
-                onClick={(e) => { e.preventDefault(); setChatOpen(!chatOpen); }}
-                className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${theme.tokens.primary} ${theme.tokens.onPrimary}`}
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); setChatOpen(!chatOpen); }}
+              className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${theme.tokens.primary} ${theme.tokens.onPrimary}`}
             >
-                <MaterialIcon name={chatOpen ? "close" : "bolt"} className="text-2xl" />
+              <MaterialIcon name={chatOpen ? "close" : "bolt"} className="text-2xl" />
             </button>
-        </div>
+          </div>
 
-        {/* Mobile Config Modal */}
-        {mobileConfigOpen && (
+          {/* Mobile Config Modal */}
+          {mobileConfigOpen && (
             <div className="fixed inset-0 z-[60] md:hidden flex flex-col bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-                <div className={`flex-1 mt-12 rounded-t-[32px] overflow-hidden flex flex-col shadow-2xl ${theme.tokens.surface} animate-in slide-in-from-bottom-full duration-300`}>
-                    <div className="p-4 flex items-center justify-between border-b border-white/5">
-                        <h2 className={`text-lg font-bold ${theme.tokens.onSurface} ml-2`}>Configuration</h2>
-                        <button 
-                            onClick={() => setMobileConfigOpen(false)}
-                            className={`p-2 rounded-full hover:bg-black/5 ${theme.tokens.onSurfaceVariant}`}
-                        >
-                            <MaterialIcon name="close" className="text-xl" />
-                        </button>
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                        <ConfigPanel 
-                            config={config} 
-                            onChange={handleConfigChange} 
-                            currency={currency} 
-                            onCurrencyChange={handleCurrencyChange} 
-                            theme={theme} 
-                            onThemeChange={setThemeId} 
-                            onProcessFile={handleProcessFile} 
-                        />
-                    </div>
+              <div className={`flex-1 mt-12 rounded-t-[32px] overflow-hidden flex flex-col shadow-2xl ${theme.tokens.surface} animate-in slide-in-from-bottom-full duration-300`}>
+                <div className="p-4 flex items-center justify-between border-b border-white/5">
+                  <h2 className={`text-lg font-bold ${theme.tokens.onSurface} ml-2`}>Configuration</h2>
+                  <button
+                    onClick={() => setMobileConfigOpen(false)}
+                    className={`p-2 rounded-full hover:bg-black/5 ${theme.tokens.onSurfaceVariant}`}
+                  >
+                    <MaterialIcon name="close" className="text-xl" />
+                  </button>
                 </div>
+                <div className="flex-1 overflow-hidden">
+                  <ConfigPanel
+                    config={config}
+                    onChange={handleConfigChange}
+                    currency={currency}
+                    onCurrencyChange={handleCurrencyChange}
+                    theme={theme}
+                    onThemeChange={setThemeId}
+                    onProcessFile={handleProcessFile}
+                  />
+                </div>
+              </div>
             </div>
-        )}
+          )}
         </div>
       </main>
     </div>

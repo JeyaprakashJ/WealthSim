@@ -21,7 +21,7 @@ export const generateReport = async (
     doc.setTextColor(theme.isDark ? 230 : 29, theme.isDark ? 225 : 27, theme.isDark ? 229 : 32);
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
-    doc.text('WealthFlow Pro', margin, 25);
+    doc.text('WealthSim', margin, 25);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(title, margin, 33);
@@ -30,7 +30,7 @@ export const generateReport = async (
 
   // --- PAGE 1: CSV DATA ---
   drawHeader('Simulation Data (CSV Format)', 1);
-  
+
   doc.setTextColor(theme.isDark ? 50 : 50, 50, 50);
   doc.setFontSize(10);
   doc.setFont('courier', 'normal');
@@ -53,11 +53,11 @@ export const generateReport = async (
       row.rsu.toFixed(2),
       row.wealthModerate.toFixed(2)
     ];
-    
+
     if (config.lifeEvents.length > 0) {
       line.splice(2, 0, row.event ? `${row.event.description} (${row.event.amount})` : '-');
     }
-    
+
     return line.join(',');
   });
 
@@ -68,22 +68,22 @@ export const generateReport = async (
   // --- PAGE 2: JSON METADATA ---
   doc.addPage();
   drawHeader('Simulation Parameters (JSON)', 2);
-  
+
   doc.setFontSize(10);
   doc.setFont('courier', 'normal');
-  
+
   const metadata = {
-    app: 'WealthFlow Pro',
+    app: 'WealthSim',
     version: '1.0',
     exportDate: new Date().toISOString(),
     config: config,
     currency: currency.code
   };
-  
+
   const metadataStr = JSON.stringify(metadata, null, 2);
   const splitMetadata = doc.splitTextToSize(metadataStr, pageWidth - 2 * margin);
   doc.text(splitMetadata, margin, 55);
-  
+
   const dateStr = new Date().toISOString().split('T')[0];
-  doc.save(`WealthFlow_Export_${dateStr}.pdf`);
+  doc.save(`WealthSim_Export_${dateStr}.pdf`);
 };

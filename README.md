@@ -1,8 +1,8 @@
-# 🌊 WealthFlow Pro
+# 🌊 WealthSim
 
 **Financial Independence, Quantified.**
 
-WealthFlow Pro is a premium, high-fidelity Fintech wealth simulator designed for modern professionals. It goes beyond simple savings calculators by accounting for complex compensation structures (RSUs, performance bonuses), localized tax regimes, and life-stage financial events.
+WealthSim is a premium, high-fidelity Fintech wealth simulator designed for modern professionals. It goes beyond simple savings calculators by accounting for complex compensation structures (RSUs, performance bonuses), localized tax regimes, and life-stage financial events.
 
 ## ✨ Core Features
 
@@ -76,7 +76,7 @@ You will need a **Google Gemini API Key**. You can get one for free at [aistudio
 
 ## 🔒 Privacy & Security
 
-WealthFlow Pro is built with **Data Sovereignty** in mind:
+WealthSim is built with **Data Sovereignty** in mind:
 - **Client-Side Processing:** All simulation logic runs in your browser.
 - **No Database:** Your financial data is never stored on a server.
 - **Portable Data:** Export your entire simulation as a encrypted-ready ZIP containing raw JSON and CSV files for your own records.
