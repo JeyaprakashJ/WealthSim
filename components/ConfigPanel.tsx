@@ -125,11 +125,9 @@ interface ConfigPanelProps {
   theme: Theme;
   onThemeChange: (id: ThemeId) => void;
   onProcessFile: (file: File) => Promise<void>;
-  apiKey: string;
-  onApiKeyChange: (val: string) => void;
 }
 
-const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange, currency, onCurrencyChange, theme, onThemeChange, onProcessFile, apiKey, onApiKeyChange }) => {
+const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange, currency, onCurrencyChange, theme, onThemeChange, onProcessFile }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [processing, setProcessing] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>('Current State');
@@ -163,21 +161,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange, currency, o
       <div className={`flex-1 overflow-y-auto overflow-x-hidden px-3 scrollbar-none`}>
 
         <div className="mb-8">
-          <label className={`text-[11px] font-bold ml-4 mb-3 block ${theme.tokens.onSurfaceVariant}`}>AI Intelligence</label>
-          <div className="mx-2 mb-4 bg-black/5 dark:bg-white/5 rounded-2xl p-4">
-            <label className={`text-[10px] font-bold mb-2 block ${theme.tokens.onSurfaceVariant} uppercase tracking-tight`}>Gemini API Key</label>
-            <div className="relative">
-              <input
-                type="password"
-                placeholder="Enter API Key..."
-                value={apiKey}
-                onChange={(e) => onApiKeyChange(e.target.value)}
-                className={`w-full text-xs font-bold rounded-xl px-4 py-3 outline-none border-2 transition-all ${theme.tokens.surfaceContainerLow} ${theme.tokens.onSurface} ${theme.tokens.outlineVariant} focus:border-primary`}
-              />
-              <MaterialIcon name="key" className={`absolute right-3 top-3 text-sm ${theme.tokens.onSurfaceVariant}`} />
-            </div>
-            <p className="text-[9px] mt-2 opacity-50 px-1">Keys are kept in session and never stored on a server.</p>
-          </div>
+          <label className={`text-[11px] font-bold ml-4 mb-3 block ${theme.tokens.onSurfaceVariant}`}>Wealth Intelligence</label>
+
 
           <NavigationDrawerSection
             icon="auto_awesome"

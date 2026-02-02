@@ -108,7 +108,6 @@ const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [overrides, setOverrides] = useState<Record<number, YearOverride>>({});
   const [themeId, setThemeId] = useState<ThemeId>('light');
-  const [apiKey, setApiKey] = useState<string>(import.meta.env.VITE_GEMINI_API_KEY || '');
 
   const [chatOpen, setChatOpen] = useState(false);
   const [mobileConfigOpen, setMobileConfigOpen] = useState(false);
@@ -356,37 +355,17 @@ const App: React.FC = () => {
       reader.readAsDataURL(file);
       const base64Data = await base64Promise;
 
-      const currentKey = apiKey || import.meta.env.VITE_GEMINI_API_KEY;
-      if (!currentKey) {
-        alert("Please set your Gemini API Key in the configuration panel.");
-        return;
-      }
-
-      const ai = new GoogleGenAI({ apiKey: currentKey });
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [{
-          parts: [
-            { inlineData: { data: base64Data, mimeType: file.type } },
-            { text: `Extract annual 'baseSalary', 'rsu', 'initialAssets', 'bonusPercent'. JSON only.` }
-          ]
-        }],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              baseSalary: { type: Type.NUMBER },
-              rsu: { type: Type.NUMBER },
-              initialAssets: { type: Type.NUMBER },
-              bonusPercent: { type: Type.NUMBER }
-            }
-          }
-        }
+      const response = await fetch('/.netlify/functions/gemini', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'extract_docs',
+          payload: { base64Data, mimeType: file.type }
+        })
       });
 
-      const extracted = JSON.parse(response.text || '{}');
+      if (!response.ok) throw new Error("Failed to process document");
+      const text = await response.text();
+      const extracted = JSON.parse(text || '{}');
       if (extracted && typeof extracted === 'object') {
         setConfig(prev => ({ ...prev, ...extracted }));
         setHistory([]); // Clear history on new AI import
@@ -400,49 +379,18 @@ const App: React.FC = () => {
     if (!eventInput.trim() || isProcessing) return;
     setIsProcessing(true);
     try {
-      const currentKey = apiKey || import.meta.env.VITE_GEMINI_API_KEY;
-      if (!currentKey) {
-        alert("Please set your Gemini API Key in the configuration panel.");
-        setIsProcessing(false);
-        return;
-      }
-      const ai = new GoogleGenAI({ apiKey: currentKey });
       const currentSimYear = config.startYear;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Life event prompt: "${eventInput}". Current simulation start year is ${currentSimYear}. 
-        Extract: 
-        - year (number)
-        - type (expense, income_jump, or windfall)
-        - amount (number, flat addition/subtraction)
-        - hikePercentage (optional number for one-time salary % growth override)
-        - newRsuAmount (optional number for one-time RSU grant value override)
-        - description (max 15 chars)
-        - icon (Material Symbol name). 
-        Return a JSON array of objects.`,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                year: { type: Type.NUMBER },
-                type: { type: Type.STRING },
-                amount: { type: Type.NUMBER },
-                hikePercentage: { type: Type.NUMBER },
-                newRsuAmount: { type: Type.NUMBER },
-                description: { type: Type.STRING },
-                icon: { type: Type.STRING }
-              },
-              required: ["year", "type", "amount", "description", "icon"]
-            }
-          }
-        }
+      const response = await fetch('/.netlify/functions/gemini', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'life_event',
+          payload: { eventInput, currentSimYear }
+        })
       });
 
-      const newEvents: any[] = JSON.parse(response.text || '[]');
+      if (!response.ok) throw new Error("Failed to process life event");
+      const text = await response.text();
+      const newEvents: any[] = JSON.parse(text || '[]');
       if (newEvents.length > 0) {
         setConfig(prev => ({
           ...prev,
@@ -473,8 +421,6 @@ const App: React.FC = () => {
         theme={theme}
         onThemeChange={setThemeId}
         onProcessFile={handleProcessFile}
-        apiKey={apiKey}
-        onApiKeyChange={setApiKey}
       />
 
       <main className={`flex-1 h-full overflow-y-auto scrollbar-thin ${theme.tokens.surfaceContainerLow} relative`}>
@@ -638,8 +584,6 @@ const App: React.FC = () => {
                     onChange={handleConfigChange}
                     currency={currency}
                     onCurrencyChange={handleCurrencyChange}
-                    apiKey={apiKey}
-                    onApiKeyChange={setApiKey}
                     theme={theme}
                     onThemeChange={setThemeId}
                     onProcessFile={handleProcessFile}
