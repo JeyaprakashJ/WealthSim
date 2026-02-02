@@ -1,4 +1,3 @@
-import { Type } from "@google/genai";
 
 export async function handler(event: any) {
     console.log("Function invoked:", event.httpMethod, event.path);
@@ -24,41 +23,78 @@ export async function handler(event: any) {
             };
         }
 
-        // List of models to try in order of preference
-        // We try variations to handle region-specific availability or aliasing issues
-        const CANDIDATE_MODELS = [
-            "gemini-1.5-flash",
-            "gemini-1.5-flash-latest",
-            "gemini-1.5-flash-001",
-            "gemini-1.5-pro",
-            "gemini-pro" // Fallback to 1.0 Pro if all else fails
-        ];
+        // STEP 1: DYNAMICALLY DISCOVER AVAILABLE MODELS
+        // We prioritize the cutting-edge models seen in your screenshot: Gemini 3 and 2.5
+        let selectedModel = "models/gemini-1.5-flash";
+        let apiVersion = "v1beta";
 
-        let lastError = null;
+        try {
+            console.log("Discovering available models...");
+            const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+            const listResp = await fetch(listUrl);
 
-        for (const model of CANDIDATE_MODELS) {
-            try {
-                console.log(`Attempting model: ${model}`);
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            if (listResp.ok) {
+                const listData = await listResp.json();
+                const allModels = listData.models || [];
+                const modelNames = allModels.map((m: any) => m.name);
+                console.log("Available Models on your key:", modelNames.join(", "));
 
-                let requestBody;
+                // Selection logic based on your console's available versions
+                const PREFERENCE_LIST = [
+                    "models/gemini-3-flash",        // THE HOLY GRAIL (From your screenshot!)
+                    "models/gemini-2.5-flash",      // Next gen fallback
+                    "models/gemini-2.5-flash-lite", // Next gen lite
+                    "models/gemini-1.5-flash",      // Standard flash
+                    "models/gemini-1.5-flash-latest",
+                    "models/gemini-pro"             // Final fallback
+                ];
 
-                if (type === "extract_docs") {
-                    const { base64Data, mimeType } = payload;
-                    requestBody = {
-                        contents: [{
-                            parts: [
-                                { inline_data: { mime_type: mimeType, data: base64Data } },
-                                { text: "Extract the following fields from this document and return ONLY valid JSON with no markdown formatting:\n- baseSalary (annual salary as a number)\n- rsu (annual RSU value as a number)\n- initialAssets (total initial assets as a number)\n- bonusPercent (bonus percentage as a decimal, e.g., 0.1 for 10%)\n\nReturn format: {\"baseSalary\": 100000, \"rsu\": 50000, \"initialAssets\": 0, \"bonusPercent\": 0.1}" }
-                            ]
-                        }]
-                    };
-                } else if (type === "life_event") {
-                    const { eventInput, currentSimYear } = payload;
-                    requestBody = {
-                        contents: [{
-                            parts: [{
-                                text: `You are a financial event parser. Based on this life event description: "${eventInput}", extract events as a JSON array.
+                // Find the first one from our preference list that actually exists in the return
+                const found = PREFERENCE_LIST.find(p => modelNames.includes(p));
+
+                if (found) {
+                    selectedModel = found;
+                    console.log(`Matched preferred model from your account: ${selectedModel}`);
+                } else {
+                    // Filter for generateContent support as total fallback
+                    const capable = allModels.filter((m: any) =>
+                        m.supportedGenerationMethods &&
+                        m.supportedGenerationMethods.includes("generateContent") &&
+                        !m.name.includes("-2.0") // Keep avoiding 2.0 due to your 0 quota
+                    );
+                    if (capable.length > 0) {
+                        selectedModel = capable[0].name;
+                        console.log(`Falling back to first capable non-2.0 model: ${selectedModel}`);
+                    }
+                }
+            } else {
+                console.error("Discovery failed. Using hardcoded fallback.");
+            }
+        } catch (e) {
+            console.error("Discovery error:", e);
+        }
+
+        // STEP 2: EXECUTE REQUEST
+        const apiUrl = `https://generativelanguage.googleapis.com/${apiVersion}/${selectedModel}:generateContent?key=${apiKey}`;
+        console.log(`Executing request using: ${selectedModel}`);
+
+        let requestBody;
+        if (type === "extract_docs") {
+            const { base64Data, mimeType } = payload;
+            requestBody = {
+                contents: [{
+                    parts: [
+                        { inline_data: { mime_type: mimeType, data: base64Data } },
+                        { text: "Extract the following fields from this document and return ONLY valid JSON with no markdown formatting:\n- baseSalary (annual salary as a number)\n- rsu (annual RSU value as a number)\n- initialAssets (total initial assets as a number)\n- bonusPercent (bonus percentage as a decimal, e.g., 0.1 for 10%)\n\nReturn format: {\"baseSalary\": 100000, \"rsu\": 50000, \"initialAssets\": 0, \"bonusPercent\": 0.1}" }
+                    ]
+                }]
+            };
+        } else if (type === "life_event") {
+            const { eventInput, currentSimYear } = payload;
+            requestBody = {
+                contents: [{
+                    parts: [{
+                        text: `You are a financial event parser. Based on this life event description: "${eventInput}", extract events as a JSON array.
 
 Current simulation start year: ${currentSimYear}
 
@@ -73,53 +109,29 @@ For each event, extract:
 
 Return ONLY a valid JSON array with no markdown formatting. Example:
 [{"year": 2027, "type": "expense", "amount": -50000, "description": "New Car", "icon": "directions_car"}]`
-                            }]
-                        }]
-                    };
-                } else {
-                    return { statusCode: 400, body: "Invalid Request Type" };
-                }
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody)
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    // If it's a 404 (Not Found) or 429 (Quota), we continue to the next model
-                    // Otherwise we might want to stop, but for now let's keep trying
-                    console.warn(`Model ${model} failed with ${response.status}: ${errorText}`);
-                    lastError = errorText;
-                    continue; // Try next model
-                }
-
-                // If success:
-                const result = await response.json();
-                const text = result.candidates?.[0]?.content?.parts?.[0]?.text || (type === "life_event" ? "[]" : "{}");
-
-                console.log(`Success with model: ${model}`);
-
-                return {
-                    statusCode: 200,
-                    headers: { "Content-Type": "application/json" },
-                    body: text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-                };
-
-            } catch (e: any) {
-                console.error(`Error attempting ${model}:`, e);
-                lastError = e.message;
-            }
+                    }]
+                }]
+            };
         }
 
-        // If loop finishes without return
-        console.error("All models failed.");
-        const safeError = lastError ? (typeof lastError === 'string' ? lastError : JSON.stringify(lastError)) : "Unknown error";
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Model ${selectedModel} failed: ${errorText}`);
+        }
+
+        const result = await response.json();
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || (type === "life_event" ? "[]" : "{}");
+
         return {
-            statusCode: 500,
+            statusCode: 200,
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ error: `All models failed. Last error: ${safeError}` })
+            body: text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
         };
 
     } catch (error: any) {
