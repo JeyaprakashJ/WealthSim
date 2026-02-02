@@ -23,14 +23,15 @@ export async function handler(event: any) {
             };
         }
 
-        // Set apiVersion to 'v1' to avoid v1beta issues with gemini-1.5-flash
-        const ai = new GoogleGenAI({ apiKey, apiVersion: 'v1' });
-        const modelId = 'gemini-1.5-flash';
+        // Initialize with API version v1beta for better schema support
+        const ai = new GoogleGenAI({ apiKey, apiVersion: "v1beta" });
+        const modelId = "gemini-2.0-flash";
 
         if (type === "extract_docs") {
             console.log("Processing extract_docs");
             const { base64Data, mimeType } = payload;
-            const response = await ai.models.generateContent({
+
+            const result = await (ai as any).models.generateContent({
                 model: modelId,
                 contents: [{
                     parts: [
@@ -38,9 +39,9 @@ export async function handler(event: any) {
                         { text: "Extract annual 'baseSalary', 'rsu', 'initialAssets', 'bonusPercent'. Return JSON only." }
                     ]
                 }],
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
+                generationConfig: {
+                    response_mime_type: "application/json",
+                    response_schema: {
                         type: Type.OBJECT,
                         properties: {
                             baseSalary: { type: Type.NUMBER },
@@ -51,17 +52,19 @@ export async function handler(event: any) {
                     }
                 }
             });
+
             return {
                 statusCode: 200,
                 headers: { "Content-Type": "application/json" },
-                body: response.text
+                body: result.text
             };
         }
 
         if (type === "life_event") {
             console.log("Processing life_event:", payload.eventInput);
             const { eventInput, currentSimYear } = payload;
-            const response = await ai.models.generateContent({
+
+            const result = await (ai as any).models.generateContent({
                 model: modelId,
                 contents: [{
                     parts: [{
@@ -77,9 +80,9 @@ export async function handler(event: any) {
             Return a JSON array of objects.`
                     }]
                 }],
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
+                generationConfig: {
+                    response_mime_type: "application/json",
+                    response_schema: {
                         type: Type.ARRAY,
                         items: {
                             type: Type.OBJECT,
@@ -97,10 +100,11 @@ export async function handler(event: any) {
                     }
                 }
             });
+
             return {
                 statusCode: 200,
                 headers: { "Content-Type": "application/json" },
-                body: response.text
+                body: result.text
             };
         }
 
