@@ -23,40 +23,28 @@ export async function handler(event: any) {
             };
         }
 
-        // Initialize with API version v1beta for better schema support
-        const ai = new GoogleGenAI({ apiKey, apiVersion: "v1beta" });
-        const modelId = "gemini-1.5-flash";
+        // Use standard SDK with default v1 API (stable, widely supported)
+        const ai = new GoogleGenAI({ apiKey });
 
         if (type === "extract_docs") {
             console.log("Processing extract_docs");
             const { base64Data, mimeType } = payload;
 
-            const result = await (ai as any).models.generateContent({
-                model: modelId,
+            // Simple approach: Use models.generateContent directly
+            const response = await (ai as any).models.generateContent({
+                model: "gemini-1.5-flash",
                 contents: [{
                     parts: [
                         { inlineData: { data: base64Data, mimeType } },
-                        { text: "Extract annual 'baseSalary', 'rsu', 'initialAssets', 'bonusPercent'. Return JSON only." }
+                        { text: "Extract the following fields from this document and return ONLY valid JSON with no markdown formatting:\n- baseSalary (annual salary as a number)\n- rsu (annual RSU value as a number)\n- initialAssets (total initial assets as a number)\n- bonusPercent (bonus percentage as a decimal, e.g., 0.1 for 10%)\n\nReturn format: {\"baseSalary\": 100000, \"rsu\": 50000, \"initialAssets\": 0, \"bonusPercent\": 0.1}" }
                     ]
-                }],
-                generationConfig: {
-                    response_mime_type: "application/json",
-                    response_schema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            baseSalary: { type: Type.NUMBER },
-                            rsu: { type: Type.NUMBER },
-                            initialAssets: { type: Type.NUMBER },
-                            bonusPercent: { type: Type.NUMBER }
-                        }
-                    }
-                }
+                }]
             });
 
             return {
                 statusCode: 200,
                 headers: { "Content-Type": "application/json" },
-                body: result.text
+                body: response.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
             };
         }
 
@@ -64,47 +52,33 @@ export async function handler(event: any) {
             console.log("Processing life_event:", payload.eventInput);
             const { eventInput, currentSimYear } = payload;
 
-            const result = await (ai as any).models.generateContent({
-                model: modelId,
+            const response = await (ai as any).models.generateContent({
+                model: "gemini-1.5-flash",
                 contents: [{
                     parts: [{
-                        text: `Life event prompt: "${eventInput}". Current simulation start year is ${currentSimYear}. 
-            Extract: 
-            - year (number)
-            - type (expense, income_jump, or windfall)
-            - amount (number, flat addition/subtraction)
-            - hikePercentage (optional number for one-time salary % growth override)
-            - newRsuAmount (optional number for one-time RSU grant value override)
-            - description (max 15 chars)
-            - icon (Material Symbol name). 
-            Return a JSON array of objects.`
+                        text: `You are a financial event parser. Based on this life event description: "${eventInput}", extract events as a JSON array.
+
+Current simulation start year: ${currentSimYear}
+
+For each event, extract:
+- year: (number) The year this event occurs
+- type: (string) One of: "expense", "income_jump", or "windfall"
+- amount: (number) The monetary impact (positive or negative)
+- hikePercentage: (optional number) If this causes a salary increase, the percentage (e.g., 0.25 for 25%)
+- newRsuAmount: (optional number) If this grants RSUs, the annual value
+- description: (string, max 15 chars) Brief description
+- icon: (string) A Material Symbols icon name that fits the event
+
+Return ONLY a valid JSON array with no markdown formatting. Example:
+[{"year": 2027, "type": "expense", "amount": -50000, "description": "New Car", "icon": "directions_car"}]`
                     }]
-                }],
-                generationConfig: {
-                    response_mime_type: "application/json",
-                    response_schema: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                year: { type: Type.NUMBER },
-                                type: { type: Type.STRING },
-                                amount: { type: Type.NUMBER },
-                                hikePercentage: { type: Type.NUMBER },
-                                newRsuAmount: { type: Type.NUMBER },
-                                description: { type: Type.STRING },
-                                icon: { type: Type.STRING }
-                            },
-                            required: ["year", "type", "amount", "description", "icon"]
-                        }
-                    }
-                }
+                }]
             });
 
             return {
                 statusCode: 200,
                 headers: { "Content-Type": "application/json" },
-                body: result.text
+                body: response.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
             };
         }
 
