@@ -23,7 +23,8 @@ export async function handler(event: any) {
             };
         }
 
-        const ai = new GoogleGenAI({ apiKey });
+        // Set apiVersion to 'v1' to avoid v1beta issues with gemini-1.5-flash
+        const ai = new GoogleGenAI({ apiKey, apiVersion: 'v1' });
         const modelId = 'gemini-1.5-flash';
 
         if (type === "extract_docs") {
@@ -62,16 +63,20 @@ export async function handler(event: any) {
             const { eventInput, currentSimYear } = payload;
             const response = await ai.models.generateContent({
                 model: modelId,
-                contents: `Life event prompt: "${eventInput}". Current simulation start year is ${currentSimYear}. 
-        Extract: 
-        - year (number)
-        - type (expense, income_jump, or windfall)
-        - amount (number, flat addition/subtraction)
-        - hikePercentage (optional number for one-time salary % growth override)
-        - newRsuAmount (optional number for one-time RSU grant value override)
-        - description (max 15 chars)
-        - icon (Material Symbol name). 
-        Return a JSON array of objects.`,
+                contents: [{
+                    parts: [{
+                        text: `Life event prompt: "${eventInput}". Current simulation start year is ${currentSimYear}. 
+            Extract: 
+            - year (number)
+            - type (expense, income_jump, or windfall)
+            - amount (number, flat addition/subtraction)
+            - hikePercentage (optional number for one-time salary % growth override)
+            - newRsuAmount (optional number for one-time RSU grant value override)
+            - description (max 15 chars)
+            - icon (Material Symbol name). 
+            Return a JSON array of objects.`
+                    }]
+                }],
                 config: {
                     responseMimeType: "application/json",
                     responseSchema: {
