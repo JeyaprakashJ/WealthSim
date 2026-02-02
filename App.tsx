@@ -108,6 +108,7 @@ const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [overrides, setOverrides] = useState<Record<number, YearOverride>>({});
   const [themeId, setThemeId] = useState<ThemeId>('light');
+  const [apiKey, setApiKey] = useState<string>(process.env.VITE_GEMINI_API_KEY || '');
 
   const [chatOpen, setChatOpen] = useState(false);
   const [mobileConfigOpen, setMobileConfigOpen] = useState(false);
@@ -354,7 +355,14 @@ const App: React.FC = () => {
       });
       reader.readAsDataURL(file);
       const base64Data = await base64Promise;
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+      const currentKey = apiKey || process.env.VITE_GEMINI_API_KEY;
+      if (!currentKey) {
+        alert("Please set your Gemini API Key in the configuration panel.");
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey: currentKey });
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -392,7 +400,13 @@ const App: React.FC = () => {
     if (!eventInput.trim() || isProcessing) return;
     setIsProcessing(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const currentKey = apiKey || process.env.VITE_GEMINI_API_KEY;
+      if (!currentKey) {
+        alert("Please set your Gemini API Key in the configuration panel.");
+        setIsProcessing(false);
+        return;
+      }
+      const ai = new GoogleGenAI({ apiKey: currentKey });
       const currentSimYear = config.startYear;
 
       const response = await ai.models.generateContent({
@@ -622,6 +636,8 @@ const App: React.FC = () => {
                     onChange={handleConfigChange}
                     currency={currency}
                     onCurrencyChange={handleCurrencyChange}
+                    apiKey={apiKey}
+                    onApiKeyChange={setApiKey}
                     theme={theme}
                     onThemeChange={setThemeId}
                     onProcessFile={handleProcessFile}
