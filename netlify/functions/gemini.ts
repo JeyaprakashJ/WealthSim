@@ -12,7 +12,8 @@ export async function handler(event: any) {
     }
 
     try {
-        const { type, payload } = JSON.parse(event.body);
+        const body = JSON.parse(event.body);
+        const { type, payload } = body;
         const apiKey = process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
@@ -23,12 +24,15 @@ export async function handler(event: any) {
             };
         }
 
-        // Use direct REST API to bypass all SDK versioning issues
-        const model = "gemini-2.0-flash-exp";
-        const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
+        // CRITICAL FIX: Use v1beta endpoint. 
+        // Newer models like gemini-1.5-flash and gemini-2.0-flash-exp often fail on v1.
+        // We use gemini-1.5-flash to ensure high quota availability (avoiding 429).
+        const model = "gemini-1.5-flash";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+        console.log(`Calling Gemini API: ${apiUrl.replace(apiKey, "***")} with model ${model}`);
 
         if (type === "extract_docs") {
-            console.log("Processing extract_docs");
             const { base64Data, mimeType } = payload;
 
             const requestBody = {
@@ -54,12 +58,18 @@ export async function handler(event: any) {
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(JSON.stringify(error));
+                const errorText = await response.text();
+                console.error("Gemini API Error:", errorText);
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    throw new Error(JSON.stringify(errorJson));
+                } catch {
+                    throw new Error(errorText);
+                }
             }
 
             const result = await response.json();
-            const text = result.candidates[0].content.parts[0].text;
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
 
             return {
                 statusCode: 200,
@@ -69,7 +79,6 @@ export async function handler(event: any) {
         }
 
         if (type === "life_event") {
-            console.log("Processing life_event:", payload.eventInput);
             const { eventInput, currentSimYear } = payload;
 
             const requestBody = {
@@ -101,12 +110,18 @@ Return ONLY a valid JSON array with no markdown formatting. Example:
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(JSON.stringify(error));
+                const errorText = await response.text();
+                console.error("Gemini API Error:", errorText);
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    throw new Error(JSON.stringify(errorJson));
+                } catch {
+                    throw new Error(errorText);
+                }
             }
 
             const result = await response.json();
-            const text = result.candidates[0].content.parts[0].text;
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
 
             return {
                 statusCode: 200,
@@ -121,7 +136,7 @@ Return ONLY a valid JSON array with no markdown formatting. Example:
         return {
             statusCode: 500,
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ error: error.message })
+            body: JSON.stringify({ error: error.message || String(error) })
         };
     }
 }
