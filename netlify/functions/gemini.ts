@@ -25,7 +25,7 @@ export async function handler(event: any) {
 
         // Initialize with API version v1beta for better schema support
         const ai = new GoogleGenAI({ apiKey, apiVersion: "v1beta" });
-        const modelId = "gemini-2.0-flash";
+        const modelId = "gemini-1.5-flash";
 
         if (type === "extract_docs") {
             console.log("Processing extract_docs");
