@@ -115,6 +115,8 @@ const App: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [history, setHistory] = useState<YearData[]>([]);
+  const [showExtractConfirmation, setShowExtractConfirmation] = useState(false);
+  const [pendingExtractedData, setPendingExtractedData] = useState<any>(null);
 
   const theme = useMemo(() => THEMES.find(t => t.id === themeId) || THEMES[0], [themeId]);
 
@@ -348,6 +350,7 @@ const App: React.FC = () => {
       }
 
       // 3. Fallback to AI extraction for Images/PDFs
+      setIsProcessing(true);
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve) => {
         reader.onload = () => resolve((reader.result as string).split(',')[1]);
@@ -369,12 +372,17 @@ const App: React.FC = () => {
       }
       const text = await response.text();
       const extracted = JSON.parse(text || '{}');
-      if (extracted && typeof extracted === 'object') {
-        setConfig(prev => ({ ...prev, ...extracted }));
-        setHistory([]); // Clear history on new AI import
+      if (extracted && typeof extracted === 'object' && Object.keys(extracted).length > 0) {
+        setPendingExtractedData(extracted);
+        setShowExtractConfirmation(true);
+      } else {
+        throw new Error("No financial data found in the document. Please try a clearer image.");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("File Processing Error:", e);
+      alert(`Error: ${e.message}`);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -595,6 +603,83 @@ const App: React.FC = () => {
                     onThemeChange={setThemeId}
                     onProcessFile={handleProcessFile}
                   />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* AI Extraction Confirmation Modal */}
+          {showExtractConfirmation && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
+              <div className={`w-full max-w-md rounded-[40px] p-8 shadow-2xl border ${theme.tokens.outlineVariant} ${theme.tokens.surface} animate-in zoom-in-95 duration-300`}>
+                <div className="flex items-center gap-4 mb-8">
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${theme.tokens.primaryContainer} ${theme.tokens.onPrimaryContainer} shadow-sm`}>
+                    <MaterialIcon name="document_scanner" className="text-3xl" />
+                  </div>
+                  <div>
+                    <h2 className={`text-xl font-bold ${theme.tokens.onSurface}`}>Review AI Extraction</h2>
+                    <p className={`text-xs ${theme.tokens.onSurfaceVariant}`}>AI detected updated financial details. Confirm to update your simulation.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 mb-8">
+                  {[
+                    { label: 'Base Salary', key: 'baseSalary', icon: 'payments' },
+                    { label: 'Annual RSU', key: 'rsu', icon: 'pending_actions' },
+                    { label: 'Bonus %', key: 'bonusPercent', icon: 'percent', isPercent: true },
+                    { label: 'Initial Assets', key: 'initialAssets', icon: 'account_balance_wallet' }
+                  ].map((field) => {
+                    const newValue = pendingExtractedData[field.key];
+                    const hasNewValue = newValue !== undefined && newValue !== null;
+                    const prevValue = config[field.key as keyof SimulationConfig] as number;
+
+                    return (
+                      <div key={field.key} className={`flex items-center justify-between p-4 rounded-3xl ${theme.tokens.surfaceContainer} border ${theme.tokens.outlineVariant} ${!hasNewValue ? 'opacity-50' : ''}`}>
+                        <div className="flex items-center gap-3">
+                          <MaterialIcon name={field.icon} className={`text-lg ${theme.tokens.onSurfaceVariant}`} />
+                          <span className={`text-[11px] font-bold ${theme.tokens.onSurfaceVariant}`}>{field.label}</span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <span className={`text-[12px] font-bold ${theme.tokens.onSurface}`}>
+                            {hasNewValue
+                              ? (field.isPercent ? `${(newValue * 100).toFixed(1)}%` : formatCurrency(newValue, currency, true))
+                              : 'Not Detected'
+                            }
+                          </span>
+                          <span className={`text-[9px] font-medium ${theme.tokens.onSurfaceVariant} opacity-60`}>
+                            Current: {field.isPercent ? `${(prevValue * 100).toFixed(1)}%` : formatCurrency(prevValue, currency, true)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowExtractConfirmation(false)}
+                    className={`flex-1 py-4 rounded-full text-xs font-bold transition-all border ${theme.tokens.outline} hover:bg-black/5 active:scale-95`}
+                  >
+                    Discard
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Only update detected fields
+                      const updates: Partial<SimulationConfig> = {};
+                      Object.keys(pendingExtractedData).forEach(key => {
+                        if (pendingExtractedData[key] !== undefined && pendingExtractedData[key] !== null) {
+                          (updates as any)[key] = pendingExtractedData[key];
+                        }
+                      });
+
+                      setConfig(prev => ({ ...prev, ...updates }));
+                      setHistory([]);
+                      setShowExtractConfirmation(false);
+                    }}
+                    className={`flex-1 py-4 rounded-full text-xs font-bold transition-all shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 ${theme.tokens.primary} ${theme.tokens.onPrimary}`}
+                  >
+                    Update Simulation
+                  </button>
                 </div>
               </div>
             </div>
