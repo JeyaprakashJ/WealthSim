@@ -363,7 +363,10 @@ const App: React.FC = () => {
         })
       });
 
-      if (!response.ok) throw new Error("Failed to process document");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to process document");
+      }
       const text = await response.text();
       const extracted = JSON.parse(text || '{}');
       if (extracted && typeof extracted === 'object') {
@@ -388,7 +391,10 @@ const App: React.FC = () => {
         })
       });
 
-      if (!response.ok) throw new Error("Failed to process life event");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to process life event");
+      }
       const text = await response.text();
       const newEvents: any[] = JSON.parse(text || '[]');
       if (newEvents.length > 0) {
@@ -402,8 +408,9 @@ const App: React.FC = () => {
         setEventInput('');
         setChatOpen(false);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("AI Error:", e);
+      alert(`AI Error: ${e.message}`);
     } finally {
       setIsProcessing(false);
     }
