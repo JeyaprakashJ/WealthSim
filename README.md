@@ -55,7 +55,7 @@ You will need a **Google Gemini API Key**. You can get one for free at [aistudio
    ```
 3. Create a `.env` file in the root and add your key:
    ```env
-   GEMINI_API_KEY=your_api_key_here
+   VITE_GEMINI_API_KEY=your_api_key_here
    ```
 4. Start the development server:
    ```bash

@@ -16,9 +16,11 @@ interface SidebarProps {
   theme: Theme;
   onThemeChange: (id: ThemeId) => void;
   onProcessFile: (file: File) => Promise<void>;
+  apiKey: string;
+  onApiKeyChange: (val: string) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ config, onChange, currency, onCurrencyChange, isOpen, onToggle, theme, onThemeChange, onProcessFile }) => {
+const Sidebar: React.FC<SidebarProps> = ({ config, onChange, currency, onCurrencyChange, isOpen, onToggle, theme, onThemeChange, onProcessFile, apiKey, onApiKeyChange }) => {
   return (
     <div className={`
       relative transition-all duration-300 z-20 flex flex-col 
@@ -28,7 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({ config, onChange, currency, onCurrenc
       hidden md:flex
     `}>
       <div className="p-4 flex items-center h-20 flex-shrink-0">
-        <button 
+        <button
           type="button"
           onClick={onToggle}
           className={`p-2 rounded-full hover:bg-black/5 ${theme.tokens.onSurface}`}
@@ -41,14 +43,16 @@ const Sidebar: React.FC<SidebarProps> = ({ config, onChange, currency, onCurrenc
       </div>
 
       <div className={`flex-1 overflow-hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        <ConfigPanel 
-            config={config} 
-            onChange={onChange} 
-            currency={currency} 
-            onCurrencyChange={onCurrencyChange} 
-            theme={theme} 
-            onThemeChange={onThemeChange} 
-            onProcessFile={onProcessFile} 
+        <ConfigPanel
+          config={config}
+          onChange={onChange}
+          currency={currency}
+          onCurrencyChange={onCurrencyChange}
+          apiKey={apiKey}
+          onApiKeyChange={onApiKeyChange}
+          theme={theme}
+          onThemeChange={onThemeChange}
+          onProcessFile={onProcessFile}
         />
       </div>
     </div>
