@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { CURRENCIES, DEFAULT_CONFIG, THEMES } from './constants';
 import { SimulationConfig, CurrencyConfig, CurrencyCode, YearOverride, ThemeId, Theme, LifeEvent, YearData } from './types';
@@ -180,7 +179,10 @@ const App: React.FC = () => {
 
     const rows = simulationResults.years.map(row => {
       const investableCashOnly = row.annualNetPay * (config.savingsRate / 100);
-      const eventAmount = row.event?.type === 'windfall' ? row.event.amount : (row.event?.type === 'expense' ? -row.event.amount : 0);
+
+      // FIX: Use amount directly as it is now signed correctly in the state
+      const eventAmount = row.event ? row.event.amount : 0;
+
       const totalInvestable = investableCashOnly + eventAmount;
 
       const line = [
@@ -406,11 +408,18 @@ const App: React.FC = () => {
       const text = await response.text();
       const newEvents: any[] = JSON.parse(text || '[]');
       if (newEvents.length > 0) {
+        // FIX: Ensure expenses have negative amounts before storing them
+        const processedEvents = newEvents.map(e => ({
+          ...e,
+          id: Math.random().toString(36).substr(2, 9),
+          amount: e.type === 'expense' ? -Math.abs(e.amount) : Math.abs(e.amount)
+        }));
+
         setConfig(prev => ({
           ...prev,
           lifeEvents: [
             ...prev.lifeEvents,
-            ...newEvents.map(e => ({ ...e, id: Math.random().toString(36).substr(2, 9) }))
+            ...processedEvents
           ]
         }));
         setEventInput('');
